@@ -1,0 +1,60 @@
+- hosts: 127.0.0.1
+  connection: local
+  vars_files:
+    - vars/main.yml
+  tasks:
+    - name: create container
+      docker:
+        name: tmp-oracle-linux
+        image: "{{ base_image }}"
+        command: sleep infinity
+        state: started
+
+    - add_host:
+        name: tmp-oracle-linux
+        groups: docker
+        ansible_connection: docker
+
+- hosts: tmp-oracle-linux
+  connection: docker
+  tasks:
+    - name: install packages
+      yum:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - sudo
+        - libselinux-python
+
+    - name: configure sudoers
+      lineinfile:
+        dest: /etc/sudoers
+        regexp: '^Defaults    requiretty'
+        line: '#Defaults    requiretty'
+  post_tasks:
+    - name: clean yum temporal directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /var/lib/yum/yumdb
+        - /var/lib/yum/history
+
+- hosts: 127.0.0.1
+  connection: local
+  vars_files:
+    - vars/main.yml
+  tasks:
+    - name: docker commit
+      command: "docker commit tmp-oracle-linux {{ organization }}/{{ image_name }}:{{ item }}"
+      with_items: "{{ tags }}"
+
+    - name: docker push
+      command: "docker push {{ organization }}/{{ image_name }}:{{ item }}"
+      with_items: "{{ tags }}"
+
+    - name: docker kill
+      command: "docker kill tmp-oracle-linux"
+
+    - name: docker rm
+      command: "docker rm tmp-oracle-linux"
