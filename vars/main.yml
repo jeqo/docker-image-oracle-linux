@@ -1,6 +1,4 @@
 base_image: oraclelinux:6.7
-organization: syscomiddleware
-image_name: oraclelinux
+image_name: syscomiddleware/oraclelinux
 tags:
-  - latest
   - 6.7
